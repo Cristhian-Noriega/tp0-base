@@ -179,3 +179,33 @@ Se proveen [pruebas automáticas](https://github.com/7574-sistemas-distribuidos/
 
 El incumplimiento de las pruebas es condición de desaprobación, pero su cumplimiento no es suficiente para la aprobación.  Se pide a los alumnos leer atentamente y **tener en cuenta** los criterios de corrección informados  [en el campus](https://campusgrado.fi.uba.ar/mod/page/view.php?id=73393).
 Respetar el formato y contenido las entradas de logs descritas en los ejercicios, pues son las que se chequean en cada uno de los tests.
+
+## Resolucion e instrucciones 
+
+### Ejercicio 1
+
+Para ejecutar el ejercicio 1 se debe primero darle permisos de ejecucion al script `generar-compose.sh`:
+
+```bash
+chmod +x generar-compose.sh
+```
+
+Luego se debe ejecutar el script con la cantidad de clientes que se desea:
+
+```bash
+./generar-compose.sh docker-compose-test.yaml 5
+```
+
+El script recibe dos parametros: el nombre del archivo de salida y la cantidad de clientes. 
+
+Finalmente se debe ejecutar el comando `docker-compose up` para iniciar los contenedores:
+
+```bash
+docker-compose up
+```
+
+Con el uso del script creado, es posible ahora crear un file docker-compose con una cantidad N de clientes y un server, ahorrando la necesidad de escribir a mano la definicion de cada cliente nuevo. De esta forma tenemos N clientes con su propio ID conectados a la misma red dependiendo del server. 
+
+
+
+
