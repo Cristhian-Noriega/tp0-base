@@ -207,5 +207,24 @@ docker-compose up
 Con el uso del script creado, es posible ahora crear un file docker-compose con una cantidad N de clientes y un server, ahorrando la necesidad de escribir a mano la definicion de cada cliente nuevo. De esta forma tenemos N clientes con su propio ID conectados a la misma red dependiendo del server. 
 
 
+### Ejercicio 2
+
+Para ejecutar el ej2 se hace de la misma forma que el ej1: 
+
+```bash
+./generar-compose.sh docker-compose-dev.yaml 1
+make docker-compose-up
+```
+
+La solucion consiste en montar los archivos de configuracion del host directamente dentro de los containers mediante **bind mounts** en Docker Compose, en lugar de copiarlos durante la construccion de la imagen.
+
+Se agregaron los siguientes volumenes en `docker-compose-dev.yaml` y en `generar-compose.sh`:
+
+- Servidor: `./server/config.ini:/config.ini`
+- Cliente: `./client/config.yaml:/config.yaml`
+
+Gracias a este cambio, los archivos `config.ini` y `config.yaml` son leidos desde el filesystem del host en tiempo de ejecucion. Cualquier modificacion en dichos archivos se refleja inmediatamente al reiniciar los containers.
+
+
 
 
