@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"time"
+	"os"
 
 	"github.com/op/go-logging"
 )
@@ -45,18 +46,23 @@ func (c *Client) createClientSocket() error {
 			c.config.ID,
 			err,
 		)
+		return err
 	}
 	c.conn = conn
 	return nil
 }
 
 // StartClientLoop Send messages to the client until some time threshold is met
-func (c *Client) StartClientLoop() {
+func (c *Client) StartClientLoop(quit chan os.Signal) {
 	// There is an autoincremental msgID to identify every message sent
 	// Messages if the message amount threshold has not been surpassed
 	for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
 		// Create the connection the server in every loop iteration. Send an
-		c.createClientSocket()
+		err := c.createClientSocket()
+		if err != nil {
+			log.Errorf("action: create_socket | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			return
+		}
 
 		// TODO: Modify the send to avoid short-write
 		fmt.Fprintf(
@@ -82,7 +88,13 @@ func (c *Client) StartClientLoop() {
 		)
 
 		// Wait a time between sending one message and the next one
-		time.Sleep(c.config.LoopPeriod)
+		select {
+		case <-time.After(c.config.LoopPeriod):
+			// Continue loop
+		case <-quit:
+			log.Infof("action: loop_interrupted | result: success | client_id: %v", c.config.ID)
+			return
+		}
 
 	}
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
