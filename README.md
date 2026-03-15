@@ -225,6 +225,13 @@ Se agregaron los siguientes volumenes en `docker-compose-dev.yaml` y en `generar
 
 Gracias a este cambio, los archivos `config.ini` y `config.yaml` son leidos desde el filesystem del host en tiempo de ejecucion. Cualquier modificacion en dichos archivos se refleja inmediatamente al reiniciar los containers.
 
+### Ejercicio 3
 
+Con el server levantado, se debe ejecutar:
 
+```bash
+chmod +x validar-echo-server.sh
+./validar-echo-server.sh
+```
 
+El script creado envia un mensaje al echo server mediante `netcat` desde un container temporal (`busybox`), el cual segun la [documentacion oficial](https://busybox.net/downloads/BusyBox.html) tiene disponible `netcat`, conectada a la misma red Docker (`tp0_testing_net`), sin instalar herramientas en el host ni exponer puertos.
