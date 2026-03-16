@@ -51,7 +51,8 @@ class Server:
             logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
             send_ack(client_sock, True)
         except (OSError, EOFError) as e:
-            logging.error(f"action: receive_message | result: fail | error: {e}")
+            logging.error(f"action: apuesta_almacenada | result: fail | error: {e}")
+            send_ack(client_sock, False)
         finally:
             client_sock.close()
             logging.info('action: close_resource | result: success | resource: client_socket')
