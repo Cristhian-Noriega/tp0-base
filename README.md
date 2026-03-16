@@ -235,3 +235,9 @@ chmod +x validar-echo-server.sh
 ```
 
 El script creado envia un mensaje al echo server mediante `netcat` desde un container temporal (`busybox`), el cual segun la [documentacion oficial](https://busybox.net/downloads/BusyBox.html) tiene disponible `netcat`, conectada a la misma red Docker (`tp0_testing_net`), sin instalar herramientas en el host ni exponer puertos.
+
+### Ejercicio 4
+
+Para el correcto manejo de un **Graceful Shutdown**, primero se realizaron cambios en el servidor, para que este pueda recibir señales de terminacion y cerrar el socket enlazado pero terminando el procesamiento de clientes de manera ordenada, respetando tiempos usando `settimeout` en las esperas. Esto fue posible gracias al uso de la lib nativa [signal](https://docs.python.org/3/library/signal.html) de Python. Para esto tambien se agrego un flag `is_running` que permite controlar el flujo del programa.
+
+En cuanto al cliente, se creo un channel `quit` para atrapar las interrupciones del sistema operativo. Utilizando el operador `select` nos preparamos para interceptar la finalizacion del proceso cortando la pausa (`time.Sleep`) inmediatamente y saliendo de la ejecución sin dejar procesos colgados.
