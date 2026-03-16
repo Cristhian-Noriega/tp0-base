@@ -36,6 +36,7 @@ class Server:
             else:
                 pass 
         finally:
+            self._server_socket.close()
             logging.info('action: close_resource | result: success | resource: server_socket')
 
     def __handle_client_connection(self, client_sock):
@@ -56,6 +57,7 @@ class Server:
             logging.error("action: receive_message | result: fail | error: {e}")
         finally:
             client_sock.close()
+            logging.info('action: close_resource | result: success | resource: client_socket')
 
     def __accept_new_connection(self):
         """
@@ -76,10 +78,9 @@ class Server:
         """
         Handle signal to graceful shutdown the server
 
-        Close server socket and set _is_running to False 
+        Set _is_running to False 
         """
         self._is_running = False
-        self._server_socket.close()
-        logging.info('action: signal_received | result: success | signum: {} | frame: {}'.format(signum, frame))
+        logging.info('action: signal_received | result: success | signum: {}'.format(signum))
 
     

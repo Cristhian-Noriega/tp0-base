@@ -63,6 +63,7 @@ func (c *Client) StartClientLoop(quit chan os.Signal) {
 			log.Errorf("action: create_socket | result: fail | client_id: %v | error: %v", c.config.ID, err)
 			return
 		}
+		
 
 		// TODO: Modify the send to avoid short-write
 		fmt.Fprintf(
@@ -73,6 +74,7 @@ func (c *Client) StartClientLoop(quit chan os.Signal) {
 		)
 		msg, err := bufio.NewReader(c.conn).ReadString('\n')
 		c.conn.Close()
+		log.Infof("action: close_resource | result: success | client_id: %v | resource: connection", c.config.ID)
 
 		if err != nil {
 			log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
