@@ -52,6 +52,27 @@ func (c *Client) createClientSocket() error {
 	return nil
 }
 
+func (c *Client) StartClient(bet Bet, quit chan os.Signal) {
+	select {		
+	case <-quit:
+		log.Infof("action: loop_interrupted | result: success | client_id: %v", c.config.ID)
+		return
+	default:
+	}
+
+	err := c.createClientSocket()
+	if err != nil {
+		log.Errorf("action: create_socket | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		return
+	}
+	
+	log.Infof("action: connect | result: success | client_id: %v | server_address: %v", c.config.ID, c.config.ServerAddress)
+	defer func() {
+		c.conn.Close()
+		log.Infof("action: close_resource | result: success | client_id: %v | resource: connection", c.config.ID)
+	}()
+}
+
 // StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) StartClientLoop(quit chan os.Signal) {
 	// There is an autoincremental msgID to identify every message sent
