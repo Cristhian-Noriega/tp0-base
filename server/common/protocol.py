@@ -15,10 +15,13 @@ def recv_bet(conn) -> Bet:
     header = (raw_header[0] << 8) | raw_header[1]
     
     raw_payload = recv_exactly(conn, header)
-    payload = raw_payload.decode('utf-8').split('\n')
+    payload = raw_payload.decode('utf-8').splitlines()
+
+    if len(payload) != 6:
+        raise ValueError(f"Invalid bet payload. Expected 6 fields, got {len(payload)}")
 
     return Bet(
-        agency=int(payload[0]),
+        agency=payload[0],
         first_name=payload[1],
         last_name=payload[2],
         document=payload[3],

@@ -50,9 +50,12 @@ class Server:
             store_bets([bet])
             logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
             send_ack(client_sock, True)
-        except (OSError, EOFError) as e:
+        except (OSError, EOFError, ValueError) as e:
             logging.error(f"action: apuesta_almacenada | result: fail | error: {e}")
-            send_ack(client_sock, False)
+            try:
+                send_ack(client_sock, False)
+            except OSError:
+                pass
         finally:
             client_sock.close()
             logging.info('action: close_resource | result: success | resource: client_socket')
@@ -66,7 +69,7 @@ class Server:
         """
 
         # Connection arrived
-        logging.info('action: accept_connections | result: in_progress')
+        logging.debug('action: accept_connections | result: in_progress')
         c, addr = self._server_socket.accept()
         logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
         return c

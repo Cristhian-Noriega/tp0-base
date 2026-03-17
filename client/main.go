@@ -3,10 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
-	"time"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
+	"time"
 
 	"github.com/op/go-logging"
 	"github.com/pkg/errors"
@@ -115,6 +116,28 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM)
 
+	agency, err := strconv.Atoi(v.GetString("id"))
+	if err != nil {
+		log.Criticalf("Could not parse client id as int: %v", err)
+		return
+	}
+
+	number, err := strconv.Atoi(os.Getenv("NUMERO"))
+	if err != nil {
+		log.Criticalf("Could not parse NUMERO as int: %v", err)
+		return
+	}
+
+	bet := common.Bet{
+		Agency:    agency,
+		FirstName: os.Getenv("NOMBRE"),
+		LastName:  os.Getenv("APELLIDO"),
+		Document:  os.Getenv("DOCUMENTO"),
+		Birthdate: os.Getenv("NACIMIENTO"),
+		Number:    number,
+	}
+
 	client := common.NewClient(clientConfig)
-	client.StartClientLoop(quit)
+	//client.StartClientLoop(quit)
+	client.StartClient(bet, quit)
 }
