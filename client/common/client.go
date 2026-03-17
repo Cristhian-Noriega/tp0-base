@@ -79,16 +79,16 @@ func (c *Client) StartClient(bet Bet, quit chan os.Signal) {
 
 	success, err := RecvAck(c.conn)
 	if err != nil {
-		log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		log.Errorf("action: apuesta_enviada | result: fail | dni: %v | numero: %v | error: %v", bet.Document, bet.Number, err)
 		return
 	}
 
 	if !success {
-		log.Errorf("action: receive_message | result: fail | client_id: %v | error: invalid_ack", c.config.ID)
+		log.Errorf("action: apuesta_enviada | result: fail | dni: %v | numero: %v | error: invalid_ack", bet.Document, bet.Number)
 		return
 	}
 
-	log.Infof("action: receive_message | result: success | client_id: %v | msg: ACK", c.config.ID)
+	log.Infof("action: apuesta_enviada | result: success | dni: %v | numero: %v", bet.Document, bet.Number)
 }
 
 // StartClientLoop Send messages to the client until some time threshold is met
