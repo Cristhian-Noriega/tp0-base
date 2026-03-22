@@ -49,11 +49,16 @@ class Server:
         client socket will also be closed
         """
         try:
-            bets = recv_batch(client_sock)
-            store_bets(bets)
-            logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
-            send_ack(client_sock, True)
-        except (OSError, EOFError, ValueError) as e:
+            while True:
+                try:
+                    bets = recv_batch(client_sock)
+                except EOFError:
+                    # Client closed the connection cleanly — all batches received
+                    break
+                store_bets(bets)
+                logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
+                send_ack(client_sock, True)
+        except (OSError, ValueError) as e:
             logging.error(f"action: apuesta_recibida | result: fail | error: {e}")
             try:
                 send_ack(client_sock, False)
