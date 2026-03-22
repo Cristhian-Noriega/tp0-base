@@ -5,8 +5,8 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"syscall"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/op/go-logging"
@@ -17,6 +17,8 @@ import (
 )
 
 var log = logging.MustGetLogger("log")
+
+const signalChannelBuffer = 1
 
 // InitConfig Function that uses viper library to parse configuration parameters.
 // Viper is configured to read variables from both environment variables and the
@@ -115,7 +117,7 @@ func main() {
 		BatchMaxAmount: v.GetInt("batch.maxAmount"),
 	}
 
-	quit := make(chan os.Signal, 1)
+	quit := make(chan os.Signal, signalChannelBuffer)
 	signal.Notify(quit, syscall.SIGTERM)
 
 	agency, err := strconv.Atoi(v.GetString("id"))
