@@ -1,11 +1,9 @@
 package common
 
 import (
-	"bufio"
-	"fmt"
 	"net"
-	"time"
 	"os"
+	"time"
 
 	"github.com/op/go-logging"
 )
@@ -18,6 +16,7 @@ type ClientConfig struct {
 	ServerAddress string
 	LoopAmount    int
 	LoopPeriod    time.Duration
+	BatchMaxAmount int
 }
 
 // Client Entity that encapsulates how
@@ -52,7 +51,7 @@ func (c *Client) createClientSocket() error {
 	return nil
 }
 
-func (c *Client) StartClient(bet Bet, quit chan os.Signal) {
+func (c *Client) StartClient(bets []Bet, quit chan os.Signal) {
 	select {		
 	case <-quit:
 		log.Infof("action: loop_interrupted | result: success | client_id: %v", c.config.ID)
@@ -72,71 +71,46 @@ func (c *Client) StartClient(bet Bet, quit chan os.Signal) {
 		log.Infof("action: close_resource | result: success | client_id: %v | resource: connection", c.config.ID)
 	}()
 
-	if err := SendBet(bet, c.conn); err != nil {
-		log.Errorf("action: send_message | result: fail | client_id: %v | error: %v", c.config.ID, err)
-		return
+	for i := 0; i < len(bets); i += c.config.BatchMaxAmount {
+		select {
+		case <- quit:
+			log.Infof("action: loop_interrupted | result: success | client_id: %v", c.config.ID)
+			return
+		default:
+		}
+
+		end := i + c.config.BatchMaxAmount
+		if end > len(bets) {
+			end = len(bets)
+		}
+		chunk := bets[i:end]
+		if err := c.sendChunk(chunk); err != nil {
+			log.Errorf("action: send_chunk | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			return
+		}
+	}
+}
+
+
+func (c *Client) sendChunk(chunk []Bet) error {
+	if err := SendBatch(chunk, c.conn); err != nil {
+		log.Errorf("action: send_batch | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		return err
 	}
 
 	success, err := RecvAck(c.conn)
 	if err != nil {
-		log.Errorf("action: apuesta_enviada | result: fail | dni: %v | numero: %v | error: %v", bet.Document, bet.Number, err)
-		return
+		log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		return err
 	}
-
 	if !success {
-		log.Errorf("action: apuesta_enviada | result: fail | dni: %v | numero: %v | error: invalid_ack", bet.Document, bet.Number)
-		return
+		log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: invalid_ack", c.config.ID)
+		return err 
 	}
 
-	log.Infof("action: apuesta_enviada | result: success | dni: %v | numero: %v", bet.Document, bet.Number)
-}
-
-// StartClientLoop Send messages to the client until some time threshold is met
-func (c *Client) StartClientLoop(quit chan os.Signal) {
-	// There is an autoincremental msgID to identify every message sent
-	// Messages if the message amount threshold has not been surpassed
-	for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
-		// Create the connection the server in every loop iteration. Send an
-		err := c.createClientSocket()
-		if err != nil {
-			log.Errorf("action: create_socket | result: fail | client_id: %v | error: %v", c.config.ID, err)
-			return
-		}
-		
-
-		// TODO: Modify the send to avoid short-write
-		fmt.Fprintf(
-			c.conn,
-			"[CLIENT %v] Message N°%v\n",
-			c.config.ID,
-			msgID,
-		)
-		msg, err := bufio.NewReader(c.conn).ReadString('\n')
-		c.conn.Close()
-		log.Infof("action: close_resource | result: success | client_id: %v | resource: connection", c.config.ID)
-
-		if err != nil {
-			log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
-				c.config.ID,
-				err,
-			)
-			return
-		}
-
-		log.Infof("action: receive_message | result: success | client_id: %v | msg: %v",
-			c.config.ID,
-			msg,
-		)
-
-		// Wait a time between sending one message and the next one
-		select {
-		case <-time.After(c.config.LoopPeriod):
-			// Continue loop
-		case <-quit:
-			log.Infof("action: loop_interrupted | result: success | client_id: %v", c.config.ID)
-			return
-		}
-
+	for _, bet := range chunk {
+		log.Infof("action: apuesta_enviada | result: success | dni: %v | numero: %v", bet.Document, bet.Number)
 	}
-	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
+	return nil
 }
+
