@@ -2,7 +2,6 @@ package common
 
 import (
 	"encoding/csv"
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -33,13 +32,14 @@ func LoadBetsFromCSV(path string, agency int) ([]Bet, error) {
 	}
 
 	bets := make([]Bet, 0, len(rows))
-	for _, row := range rows {
+	for i, row := range rows {
 		if len(row) < csvMinColumns {
 			continue
 		}
 		number, err := strconv.Atoi(strings.TrimSpace(row[csvNumberIdx]))
 		if err != nil {
-			return nil, fmt.Errorf("invalid number in csv: %w", err)
+			log.Warningf("action: load_bets | result: skip | row: %v | reason: invalid_number", i)
+			continue
 		}
 		bets = append(bets, Bet{
 			Agency:    agency,
