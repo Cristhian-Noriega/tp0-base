@@ -7,6 +7,13 @@ import (
 	"strings"
 )
 
+const (
+	headerSize = 2
+	ackSize    = 1
+	byteShift  = 8
+	byteMask   = 0xFF
+	ackSuccess = 0x01
+)
 
 func sendAll(conn net.Conn, data []byte) error {
 	sent := 0
@@ -20,8 +27,6 @@ func sendAll(conn net.Conn, data []byte) error {
 	return nil
 }
 
-
-
 func SendBet(bet Bet, conn net.Conn) error {
 	payload := strings.Join([]string{
 		strconv.Itoa(bet.Agency),
@@ -33,25 +38,27 @@ func SendBet(bet Bet, conn net.Conn) error {
 	}, "\n") + "\n"
 
 	length := len(payload)
-	header := []byte{byte(length >> 8), byte(length & 0xFF)}
+	header := make([]byte, headerSize)
+	header[0] = byte(length >> byteShift)
+	header[1] = byte(length & byteMask)
 
 	return sendAll(conn, append(header, []byte(payload)...))
 }
 
-
 func RecvAck(conn net.Conn) (bool, error) {
-	buffer := make([]byte, 1)
+	buffer := make([]byte, ackSize)
 	_, err := io.ReadFull(conn, buffer)
 	if err != nil {
 		return false, err
 	}
-	return buffer[0] == 0x01, nil
+	return buffer[0] == ackSuccess, nil
 }
-
 
 func SendBatch(bets []Bet, conn net.Conn) error {
 	n := len(bets)
-	countHeader := []byte{byte(n >> 8), byte(n & 0xFF)}
+	countHeader := make([]byte, headerSize)
+	countHeader[0] = byte(n >> byteShift)
+	countHeader[1] = byte(n & byteMask)
 	if err := sendAll(conn, countHeader); err != nil {
 		return err
 	}
