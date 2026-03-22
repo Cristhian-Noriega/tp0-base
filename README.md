@@ -241,3 +241,12 @@ El script creado envia un mensaje al echo server mediante `netcat` desde un cont
 Para el correcto manejo de un **Graceful Shutdown**, primero se realizaron cambios en el servidor, para que este pueda recibir señales de terminacion y cerrar el socket enlazado pero terminando el procesamiento de clientes de manera ordenada, respetando tiempos usando `settimeout` en las esperas. Esto fue posible gracias al uso de la lib nativa [signal](https://docs.python.org/3/library/signal.html) de Python. Para esto tambien se agrego un flag `is_running` que permite controlar el flujo del programa.
 
 En cuanto al cliente, se creo un channel `quit` para atrapar las interrupciones del sistema operativo. Utilizando el operador `select` nos preparamos para interceptar la finalizacion del proceso cortando la pausa (`time.Sleep`) inmediatamente y saliendo de la ejecución sin dejar procesos colgados.
+
+### Ejercicio 5 
+
+Para ejecutar es de la misma forma que ejercicios anteriores.
+
+El header es de 2 bytes, para la longitud del payload, y esto es codificado en big-endian y con uso de bit shifts manuales. El payload contiene los campos de la apuesta separados por `\n` en un orden fijo: `agency`, `first_name`, `last_name`, `document`, `birthdate`, `number`.
+
+Por el lado del servidor, este responde con 1 byte: `0x01` si la apuesta fue recibida correctamente, `0x00` si hubo un error. Esto funciona como un `ACK` para el cliente. 
+
