@@ -47,3 +47,18 @@ func RecvAck(conn net.Conn) (bool, error) {
 	}
 	return buffer[0] == 0x01, nil
 }
+
+
+func SendBatch(bets []Bet, conn net.Conn) error {
+	n := len(bets)
+	countHeader := []byte{byte(n >> 8), byte(n & 0xFF)}
+	if err := sendAll(conn, countHeader); err != nil {
+		return err
+	}
+	for _, bet := range bets {
+		if err := SendBet(bet, conn); err != nil {
+			return err
+		}
+	}
+	return nil
+}

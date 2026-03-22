@@ -5,8 +5,8 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
 	"syscall"
+	"strings"
 	"time"
 
 	"github.com/op/go-logging"
@@ -40,6 +40,7 @@ func InitConfig() (*viper.Viper, error) {
 	v.BindEnv("loop", "period")
 	v.BindEnv("loop", "amount")
 	v.BindEnv("log", "level")
+	v.BindEnv("batch", "maxAmount")
 
 	// Try to read configuration from config file. If config file
 	// does not exists then ReadInConfig will fail but configuration
@@ -107,10 +108,11 @@ func main() {
 	PrintConfig(v)
 
 	clientConfig := common.ClientConfig{
-		ServerAddress: v.GetString("server.address"),
-		ID:            v.GetString("id"),
-		LoopAmount:    v.GetInt("loop.amount"),
-		LoopPeriod:    v.GetDuration("loop.period"),
+		ServerAddress:  v.GetString("server.address"),
+		ID:             v.GetString("id"),
+		LoopAmount:     v.GetInt("loop.amount"),
+		LoopPeriod:     v.GetDuration("loop.period"),
+		BatchMaxAmount: v.GetInt("batch.maxAmount"),
 	}
 
 	quit := make(chan os.Signal, 1)
@@ -122,22 +124,13 @@ func main() {
 		return
 	}
 
-	number, err := strconv.Atoi(os.Getenv("NUMERO"))
+	csvPath := fmt.Sprintf(".data/agency-%s.csv", v.GetString("id"))
+	bets, err := common.LoadBetsFromCSV(csvPath, agency)
 	if err != nil {
-		log.Criticalf("Could not parse NUMERO as int: %v", err)
+		log.Criticalf("action: load_bets | result: fail | client_id: %v | error: %v", v.GetString("id"), err)
 		return
 	}
 
-	bet := common.Bet{
-		Agency:    agency,
-		FirstName: os.Getenv("NOMBRE"),
-		LastName:  os.Getenv("APELLIDO"),
-		Document:  os.Getenv("DOCUMENTO"),
-		Birthdate: os.Getenv("NACIMIENTO"),
-		Number:    number,
-	}
-
 	client := common.NewClient(clientConfig)
-	//client.StartClientLoop(quit)
-	client.StartClient(bet, quit)
+	client.StartClient(bets, quit)
 }
