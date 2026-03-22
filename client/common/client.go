@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"time"
@@ -12,10 +13,10 @@ var log = logging.MustGetLogger("log")
 
 // ClientConfig Configuration used by the client
 type ClientConfig struct {
-	ID            string
-	ServerAddress string
-	LoopAmount    int
-	LoopPeriod    time.Duration
+	ID             string
+	ServerAddress  string
+	LoopAmount     int
+	LoopPeriod     time.Duration
 	BatchMaxAmount int
 }
 
@@ -52,7 +53,7 @@ func (c *Client) createClientSocket() error {
 }
 
 func (c *Client) StartClient(bets []Bet, quit chan os.Signal) {
-	select {		
+	select {
 	case <-quit:
 		log.Infof("action: loop_interrupted | result: success | client_id: %v", c.config.ID)
 		return
@@ -64,7 +65,7 @@ func (c *Client) StartClient(bets []Bet, quit chan os.Signal) {
 		log.Errorf("action: create_socket | result: fail | client_id: %v | error: %v", c.config.ID, err)
 		return
 	}
-	
+
 	log.Infof("action: connect | result: success | client_id: %v | server_address: %v", c.config.ID, c.config.ServerAddress)
 	defer func() {
 		c.conn.Close()
@@ -73,7 +74,7 @@ func (c *Client) StartClient(bets []Bet, quit chan os.Signal) {
 
 	for i := 0; i < len(bets); i += c.config.BatchMaxAmount {
 		select {
-		case <- quit:
+		case <-quit:
 			log.Infof("action: loop_interrupted | result: success | client_id: %v", c.config.ID)
 			return
 		default:
@@ -91,7 +92,6 @@ func (c *Client) StartClient(bets []Bet, quit chan os.Signal) {
 	}
 }
 
-
 func (c *Client) sendChunk(chunk []Bet) error {
 	if err := SendBatch(chunk, c.conn); err != nil {
 		log.Errorf("action: send_batch | result: fail | client_id: %v | error: %v", c.config.ID, err)
@@ -105,7 +105,7 @@ func (c *Client) sendChunk(chunk []Bet) error {
 	}
 	if !success {
 		log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: invalid_ack", c.config.ID)
-		return err 
+		return fmt.Errorf("invalid ack from server")
 	}
 
 	for _, bet := range chunk {
@@ -113,4 +113,3 @@ func (c *Client) sendChunk(chunk []Bet) error {
 	}
 	return nil
 }
-
