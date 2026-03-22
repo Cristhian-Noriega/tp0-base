@@ -126,7 +126,7 @@ func main() {
 		return
 	}
 
-	csvPath := fmt.Sprintf(".data/agency-%s.csv", v.GetString("id"))
+	csvPath := fmt.Sprintf("/data/agency-%s.csv", v.GetString("id"))
 	bets, err := common.LoadBetsFromCSV(csvPath, agency)
 	if err != nil {
 		log.Criticalf("action: load_bets | result: fail | client_id: %v | error: %v", v.GetString("id"), err)
