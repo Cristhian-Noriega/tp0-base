@@ -250,3 +250,15 @@ El header es de 2 bytes, para la longitud del payload, y esto es codificado en b
 
 Por el lado del servidor, este responde con 1 byte: `0x01` si la apuesta fue recibida correctamente, `0x00` si hubo un error. Esto funciona como un `ACK` para el cliente. 
 
+
+### Ejercicio 6
+
+Para ejecutar es de la misma forma que ejercicios anteriores.
+
+**Protocolo de Comunicación (Parte 2):**
+- **Encabezado del Batch**: El cliente envía inicialmente 2 bytes (Big-Endian) que indican la cantidad `N` de apuestas incluidas en el lote.
+- **Serialización**: Inmediatamente se envían las `N` apuestas siguiendo el formato de *Length-Prefixed Payload* del ej 5 (Header de 2 bytes para el largo y payload delimitado por `\n`).
+- **Confirmación única (ACK)**: El servidor procesa el lote completo y responde con un único byte de confirmación (`0x01` para éxito, `0x00` para fallo).
+- **Conexión Persistente**: El servidor utiliza un bucle persistente para recibir múltiples lotes desde una misma agencia a través de una única conexión TCP, minimizando la latencia.
+
+
