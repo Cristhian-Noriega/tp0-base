@@ -9,26 +9,27 @@ ACCEPT_TIMEOUT_SECONDS = 1
 
 
 class Server:
-    def __init__(self, port, listen_backlog):
+    def __init__(self, port, listen_backlog, agencies_amount):
         # Initialize server socket
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
         self._is_running = True
         self._server_socket.settimeout(ACCEPT_TIMEOUT_SECONDS)
+        self._agencies_amount = agencies_amount
         self._closed_connections = 0
         self._new_opened_connections = 0
 
     def run(self):
         """
         Dummy Server loop
-
+ 
         Server that accept a new connections and establishes a
         communication with a client. After client with communucation
         finishes, servers starts to accept new connections again
         """
         try:
-            while self._is_running and self._closed_connections < 5:
+            while self._is_running and self._closed_connections < self._agencies_amount:
                 try: 
                     client_sock = self.__accept_new_connection()
                     self.__handle_client_connection(client_sock)
@@ -36,7 +37,7 @@ class Server:
                     continue
             logging.info("action: sorteo | result: success")
             
-            while self._new_opened_connections < 5:
+            while self._new_opened_connections < self._agencies_amount:
                 try:
                     client_sock = self.__accept_new_connection()
                     self.__handle_winners_query(client_sock)
