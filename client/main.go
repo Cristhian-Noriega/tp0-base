@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -120,19 +119,8 @@ func main() {
 	quit := make(chan os.Signal, signalChannelBuffer)
 	signal.Notify(quit, syscall.SIGTERM)
 
-	agency, err := strconv.Atoi(v.GetString("id"))
-	if err != nil {
-		log.Criticalf("Could not parse client id as int: %v", err)
-		return
-	}
-
 	csvPath := fmt.Sprintf("/data/agency-%s.csv", v.GetString("id"))
-	bets, err := common.LoadBetsFromCSV(csvPath, agency)
-	if err != nil {
-		log.Criticalf("action: load_bets | result: fail | client_id: %v | error: %v", v.GetString("id"), err)
-		return
-	}
 
 	client := common.NewClient(clientConfig)
-	client.StartClient(bets, quit)
+	client.StartClient(csvPath, quit)
 }
