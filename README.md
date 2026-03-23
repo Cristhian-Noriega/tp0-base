@@ -250,7 +250,27 @@ El header es de 2 bytes, para la longitud del payload, y esto es codificado en b
 
 Por el lado del servidor, este responde con 1 byte: `0x01` si la apuesta fue recibida correctamente, `0x00` si hubo un error. Esto funciona como un `ACK` para el cliente. 
 
+
 Al definir el protocolo de la capa de aplicacion, se opto por un approach que considera framing binario mas payload en texto. Si bien, se sabe que si fuese todo binario, se podria optimizar el ancho de banda y se reduciria el payload, se considero un trade off aceptable para simplificar el protocolo, y que del lado del cliente se tiene la posibilidad de ver el payload en texto plano y del lado del servido simplemente splittear por \n. Ademas en un caso de extension de fields no se rompe la compatibilidad con el protocolo actual.
 
 Respecto al manejo de short reads y short writes, se realizo una encapsulacion de las ops de lectura y escritura en funciones auxiliares `recv_exactly` y `send_all` que se encargan de leer o escribir la cantidad exacta de bytes solicitada.
+
+
+### Ejercicio 6
+
+Para ejecutar es de la misma forma que ejercicios anteriores.
+
+En el ejercicio se pedia una implementacion de batching de las apuestas, es decir, el cliente agrupa varias apuestas y las envia en un mismo mensaje al server, en lugar de mandarlas una por una. En una primera iteracion, se implemento el batching, con la restriccion de que el batch no podia la variable de config `BatchMaxAmount`, garantizando que el payload nunca supere el limite estricto de 8kB. Pero analizando, dado que el tamaño de una apuesta es dinamico (depende de varios fields tales como el nombre, apellido, etc), limitar el batch a una cantidad fija de apuestas no garantiza que el payload no supere el limite estricto de 8kB. Por lo tanto, se modifico la implementacion para que el batch se detenga cuando el payload alcance el tamaño maximo de 8kB, o cuando se alcance la cantidad maxima de apuestas definidas en `BatchMaxAmount`. 
+
+Para esta validacion se implemento una logica que implica: 
+- Por cada apuesta de tamano variable `S`, se simula su tamano final
+- Se revisa si dicho `S` haria que el payload supere los 8kB
+- Si el chunk por agregar excede `maxBatchSizeBytes` o la cantidad `BatchMaxAmount`, se flushea el chunk por TCP. 
+- Si una apuesta excede `maxBatchSizeBytes`, se descarta y se loguea el error.
+
+En cuanto al protocolo de comunicacion, el formato interno de una apuesta se mantuvo igual al ejercicio 5 (2 bytes de longitud + payload delimitado por `\n`), pero agrupado bajo la siguiente estructura para el batching:
+1. El cliente inicia la transmisión enviando un encabezado de 2 bytes (Big-Endian) indicando la cantidad `N` de apuestas que contiene el lote.
+2. Inmediatamente después, el cliente transmite las `N` apuestas (cada una con su propio protocolo del ej 5).
+3. El servidor reconstruye el lote leyendo el header con la cantidad `N` y luego pareseando `N` apuestas individuales. Al finalizar el lote, responde con un unico byte de confirmacion ACK.
+
 
