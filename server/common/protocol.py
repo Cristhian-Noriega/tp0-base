@@ -65,7 +65,9 @@ def recv_winners_query(conn) -> int:
 
 def send_winners(conn, agency_id: int) -> None:
     """
-    [2 bytes: cantidad de ganadores en bytes]
+    [1 byte: READY]
+    [2 bytes: cantidad de ganadores]
+    [2 bytes: tamaño del payload en bytes]
     [DNI\n DNI\n ...]
     """
     winners = [
@@ -75,10 +77,14 @@ def send_winners(conn, agency_id: int) -> None:
     ]
     
     count = len(winners)
-    header = bytes([count >> BYTE_SHIFT, count & BYTE_MASK])
     payload = "\n".join(winners) + "\n" if winners else ""
+    payload_encoded = payload.encode('utf-8')
+    payload_size = len(payload_encoded)
     
-    conn.sendall(bytes([READY]) + header + payload.encode('utf-8'))
+    header = bytes([count >> BYTE_SHIFT, count & BYTE_MASK])
+    size_header = bytes([payload_size >> BYTE_SHIFT, payload_size & BYTE_MASK])
+    
+    conn.sendall(bytes([READY]) + header + size_header + payload_encoded)
 
 def send_not_ready(conn) -> None:
     """

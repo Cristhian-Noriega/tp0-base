@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"io"
 	"net"
 	"strconv"
@@ -14,6 +15,8 @@ const (
 	byteMask   = 0xFF
 	ackSuccess = 0x01
 )
+
+var ErrNotReady = fmt.Errorf("sorteo not ready")
 
 func sendAll(conn net.Conn, data []byte) error {
 	sent := 0
@@ -69,3 +72,57 @@ func SendBatch(bets []Bet, conn net.Conn) error {
 	}
 	return nil
 }
+
+func SendFin(conn net.Conn) error {
+	header := make([]byte, headerSize)
+	return sendAll(conn, header)
+}
+
+
+func RecvWinners(conn net.Conn) ([]string, error) {
+	ready := make([]byte, 1)
+	if _, err := io.ReadFull(conn, ready); err != nil {
+		return nil, err
+	}
+
+	if ready[0] == 0x00 { // NOT_READY
+		return nil, ErrNotReady
+	}
+
+	// Read Count Header (number of winners)
+	header := make([]byte, headerSize)
+	if _, err := io.ReadFull(conn, header); err != nil {
+		return nil, err
+	}
+	expectedCount := int(header[0])<<byteShift | int(header[1])
+
+	// Read Size Header (total bytes of payload)
+	sizeHeader := make([]byte, headerSize)
+	if _, err := io.ReadFull(conn, sizeHeader); err != nil {
+		return nil, err
+	}
+	payloadSize := int(sizeHeader[0])<<byteShift | int(sizeHeader[1])
+
+	if payloadSize == 0 {
+		return []string{}, nil
+	}
+
+	payload := make([]byte, payloadSize)
+	if _, err := io.ReadFull(conn, payload); err != nil {
+		return nil, err
+	}
+
+	content := strings.TrimSpace(string(payload))
+	if content == "" {
+		return []string{}, nil
+	}
+	dnis := strings.Split(content, "\n")
+
+	// Verify count matches expected amount of winners
+	if len(dnis) != expectedCount {
+		log.Warningf("action: recv_winners | result: count_mismatch | expected: %v | got: %v", expectedCount, len(dnis))
+	}
+
+	return dnis, nil
+}
+

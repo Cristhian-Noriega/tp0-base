@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -125,14 +126,62 @@ func (c *Client) StartClient(csvPath string, quit chan os.Signal) {
 	}
 
 	log.Infof("action: connect | result: success | client_id: %v | server_address: %v", c.config.ID, c.config.ServerAddress)
-	defer func() {
-		c.conn.Close()
-		log.Infof("action: close_resource | result: success | client_id: %v | resource: connection", c.config.ID)
-	}()
+	
 
 	if err := c.readCSV(csvPath, quit); err != nil {
 		log.Errorf("action: read_csv | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		c.conn.Close()
 		return
+	}
+
+	if err := SendFin(c.conn); err != nil {
+		log.Errorf("action: send_fin | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		c.conn.Close()
+	}
+
+	c.conn.Close()
+
+	if err := c.queryWinners(quit); err != nil {
+		log.Errorf("action: query_winners | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		return
+	}
+}
+
+func (c *Client) queryWinners(quit chan os.Signal) error {
+	agencyID, _ := strconv.Atoi(c.config.ID)
+	header := make([]byte, headerSize)
+	header[0] = byte(agencyID >> byteShift)
+	header[1] = byte(agencyID & byteMask)
+
+	for {
+		select {
+		case <-quit:
+			return nil
+		default:
+		}
+
+		if err := c.createClientSocket(); err != nil {
+			return err
+		}
+
+		if err := sendAll(c.conn, header); err != nil {
+			c.conn.Close()
+			return err
+		}
+
+		winners, err := RecvWinners(c.conn)
+		c.conn.Close()
+
+		if errors.Is(err, ErrNotReady) {
+			log.Infof("action: consulta_ganadores | result: not_ready | client_id: %v", c.config.ID)
+			continue // ← reintenta
+		}
+		if err != nil {
+			return err
+		}
+
+		log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %v", len(winners))
+		return nil
 	}
 }
 
