@@ -1,7 +1,7 @@
 import socket
 import logging
 import signal
-from common.protocol import recv_batch, send_ack
+from common.protocol import recv_batch, send_ack, recv_winners_query, send_winners
 from common.utils import store_bets
 
 
@@ -16,6 +16,8 @@ class Server:
         self._server_socket.listen(listen_backlog)
         self._is_running = True
         self._server_socket.settimeout(ACCEPT_TIMEOUT_SECONDS)
+        self._closed_connections = 0
+        self._new_opened_connections = 0
 
     def run(self):
         """
@@ -26,12 +28,21 @@ class Server:
         finishes, servers starts to accept new connections again
         """
         try:
-            while self._is_running:
+            while self._is_running and self._closed_connections < 5:
                 try: 
                     client_sock = self.__accept_new_connection()
                     self.__handle_client_connection(client_sock)
                 except socket.timeout:
                     continue
+            logging.info("action: sorteo | result: success")
+            
+            while self._new_opened_connections < 5:
+                try:
+                    client_sock = self.__accept_new_connection()
+                    self.__handle_winners_query(client_sock)
+                except socket.timeout:
+                    continue
+
         except OSError as e:
             if self._is_running:
                 logging.error(f"action: run | result: fail | error: {e}")
@@ -52,6 +63,11 @@ class Server:
             while True:
                 try:
                     bets = recv_batch(client_sock)
+                    if not bets: 
+                        "close the connection"
+                        "add the counter of closed connections"
+                        self._closed_connections += 1
+                        break
                 except EOFError:
                     # Client closed the connection cleanly — all batches received
                     break
@@ -92,4 +108,23 @@ class Server:
         self._is_running = False
         logging.info('action: signal_received | result: success | signum: {}'.format(signum))
 
+    def __handle_winners_query(self, client_sock):
+        """
+        Read message from a specific client and close the socket
+
+        It is used after the first 5 connections are closed and to handle the winners query
+        """
+
+        try:
+            agency_id = recv_winners_query(client_sock)
+            send_winners(client_sock, agency_id)
+            self._new_opened_connections += 1
+        except (OSError, ValueError) as e:
+            logging.error(f"action: winners_query | result: fail | error: {e}")
+        finally:
+            client_sock.close()
+            logging.info('action: close_resource | result: success | resource: client_socket')
+            
+
+            
     
