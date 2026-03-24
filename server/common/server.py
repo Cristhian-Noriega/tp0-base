@@ -3,6 +3,7 @@ import logging
 import signal
 from common.protocol import recv_batch, send_ack, recv_winners_query, send_winners
 from common.utils import store_bets
+import threading
 
 
 ACCEPT_TIMEOUT_SECONDS = 1
@@ -19,28 +20,22 @@ class Server:
         self._agencies_amount = agencies_amount
         self._closed_connections = 0
         self._new_opened_connections = 0
+        self._lock = threading.Lock()
+        self._barrier = threading.Barrier(agencies_amount)
 
     def run(self):
         """
-        Dummy Server loop
- 
-        Server that accept a new connections and establishes a
-        communication with a client. After client with communucation
-        finishes, servers starts to accept new connections again
+        Server loop that accepts new connections and spawns a thread for each.
         """
-        client_sockets = []
+        logging.info("action: server_run | result: success")
         try:
-            while self._is_running and self._closed_connections < self._agencies_amount:
+            while self._is_running:
                 try: 
                     client_sock = self.__accept_new_connection()
-                    self.__handle_client_connection(client_sock, client_sockets)
+                    thread = threading.Thread(target=self.__handle_client_connection, args=(client_sock,))
+                    thread.start()
                 except socket.timeout:
                     continue
-            
-            logging.info("action: sorteo | result: success")
-            
-            for sock in client_sockets:
-                self.__handle_winners_query(sock)
 
         except OSError as e:
             if self._is_running:
@@ -51,7 +46,7 @@ class Server:
             self._server_socket.close()
             logging.info('action: close_resource | result: success | resource: server_socket')
 
-    def __handle_client_connection(self, client_sock, client_sockets):
+    def __handle_client_connection(self, client_sock):
         """
         Read message from a specific client socket and closes the socket
  
@@ -63,22 +58,34 @@ class Server:
                 try:
                     bets = recv_batch(client_sock)
                     if not bets: 
-                        self._closed_connections += 1
-                        client_sockets.append(client_sock)
+                        # Agency finished sending bets
                         break
                 except EOFError:
-                    # Client closed the connection cleanly — all batches received
                     break
-                store_bets(bets)
+                with self._lock:
+                    store_bets(bets)
                 logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
                 send_ack(client_sock, True)
+            
+            # Phase 2: Wait for all agencies to finish betting
+            logging.info(f"action: wait_barrier | result: in_progress")
+            arrival = self._barrier.wait()
+            
+            # Only one thread should log the sorteo success
+            if arrival == 0:
+                logging.info("action: sorteo | result: success")
+
+            # Phase 3: Send winners
+            self.__handle_winners_query(client_sock)
+
         except (OSError, ValueError) as e:
             logging.error(f"action: apuesta_recibida | result: fail | error: {e}")
-            try:
-                send_ack(client_sock, False)
-            except OSError:
-                pass
+        except threading.BrokenBarrierError:
+            logging.error("action: wait_barrier | result: fail | error: barrier_broken")
+        finally:
             client_sock.close()
+            logging.info('action: close_resource | result: success | resource: client_socket')
+            
 
     def __accept_new_connection(self):
         """
@@ -108,20 +115,13 @@ class Server:
     def __handle_winners_query(self, client_sock):
         """
         Read message from a specific client and close the socket
-
+ 
         It is used after the first 5 connections are closed and to handle the winners query
         """
-
         try:
             agency_id = recv_winners_query(client_sock)
             send_winners(client_sock, agency_id)
-            self._new_opened_connections += 1
+            with self._lock:
+                self._new_opened_connections += 1
         except (OSError, ValueError) as e:
             logging.error(f"action: winners_query | result: fail | error: {e}")
-        finally:
-            client_sock.close()
-            logging.info('action: close_resource | result: success | resource: client_socket')
-            
-
-            
-    
