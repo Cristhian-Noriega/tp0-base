@@ -28,21 +28,19 @@ class Server:
         communication with a client. After client with communucation
         finishes, servers starts to accept new connections again
         """
+        client_sockets = []
         try:
             while self._is_running and self._closed_connections < self._agencies_amount:
                 try: 
                     client_sock = self.__accept_new_connection()
-                    self.__handle_client_connection(client_sock)
+                    self.__handle_client_connection(client_sock, client_sockets)
                 except socket.timeout:
                     continue
+            
             logging.info("action: sorteo | result: success")
             
-            while self._new_opened_connections < self._agencies_amount:
-                try:
-                    client_sock = self.__accept_new_connection()
-                    self.__handle_winners_query(client_sock)
-                except socket.timeout:
-                    continue
+            for sock in client_sockets:
+                self.__handle_winners_query(sock)
 
         except OSError as e:
             if self._is_running:
@@ -53,10 +51,10 @@ class Server:
             self._server_socket.close()
             logging.info('action: close_resource | result: success | resource: server_socket')
 
-    def __handle_client_connection(self, client_sock):
+    def __handle_client_connection(self, client_sock, client_sockets):
         """
         Read message from a specific client socket and closes the socket
-
+ 
         If a problem arises in the communication with the client, the
         client socket will also be closed
         """
@@ -65,9 +63,8 @@ class Server:
                 try:
                     bets = recv_batch(client_sock)
                     if not bets: 
-                        "close the connection"
-                        "add the counter of closed connections"
                         self._closed_connections += 1
+                        client_sockets.append(client_sock)
                         break
                 except EOFError:
                     # Client closed the connection cleanly — all batches received
@@ -81,9 +78,7 @@ class Server:
                 send_ack(client_sock, False)
             except OSError:
                 pass
-        finally:
             client_sock.close()
-            logging.info('action: close_resource | result: success | resource: client_socket')
 
     def __accept_new_connection(self):
         """

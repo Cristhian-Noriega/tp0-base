@@ -2,7 +2,6 @@ package common
 
 import (
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -137,14 +136,15 @@ func (c *Client) StartClient(csvPath string, quit chan os.Signal) {
 	if err := SendFin(c.conn); err != nil {
 		log.Errorf("action: send_fin | result: fail | client_id: %v | error: %v", c.config.ID, err)
 		c.conn.Close()
+		return
 	}
-
-	c.conn.Close()
 
 	if err := c.queryWinners(quit); err != nil {
 		log.Errorf("action: query_winners | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		c.conn.Close()
 		return
 	}
+	c.conn.Close()
 }
 
 func (c *Client) queryWinners(quit chan os.Signal) error {
@@ -153,36 +153,17 @@ func (c *Client) queryWinners(quit chan os.Signal) error {
 	header[0] = byte(agencyID >> byteShift)
 	header[1] = byte(agencyID & byteMask)
 
-	for {
-		select {
-		case <-quit:
-			return nil
-		default:
-		}
-
-		if err := c.createClientSocket(); err != nil {
-			return err
-		}
-
-		if err := sendAll(c.conn, header); err != nil {
-			c.conn.Close()
-			return err
-		}
-
-		winners, err := RecvWinners(c.conn)
-		c.conn.Close()
-
-		if errors.Is(err, ErrNotReady) {
-			log.Infof("action: consulta_ganadores | result: not_ready | client_id: %v", c.config.ID)
-			continue // ← reintenta
-		}
-		if err != nil {
-			return err
-		}
-
-		log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %v", len(winners))
-		return nil
+	if err := sendAll(c.conn, header); err != nil {
+		return err
 	}
+
+	winners, err := RecvWinners(c.conn)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %v", len(winners))
+	return nil
 }
 
 func (c *Client) sendChunk(chunk []Bet) error {
