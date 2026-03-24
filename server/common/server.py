@@ -96,6 +96,7 @@ class Server:
         # Connection arrived
         logging.debug('action: accept_connections | result: in_progress')
         c, addr = self._server_socket.accept()
+        c.settimeout(ACCEPT_TIMEOUT_SECONDS) 
         logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
         return c
 
