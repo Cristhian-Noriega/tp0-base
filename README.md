@@ -261,4 +261,12 @@ Para ejecutar es de la misma forma que ejercicios anteriores.
 - **Confirmación única (ACK)**: El servidor procesa el lote completo y responde con un único byte de confirmación (`0x01` para éxito, `0x00` para fallo).
 - **Conexión Persistente**: El servidor utiliza un bucle persistente para recibir múltiples lotes desde una misma agencia a través de una única conexión TCP, minimizando la latencia.
 
+### Ejercicio 7
+
+Para implementar el ej7, se adoptó un protocolo de **conexión única por cliente**: cada agencia establece una sola conexión TCP con el servidor, envía sus apuestas en batches, notifica el fin del envío con un mensaje `FIN`, y espera los ganadores en esa misma conexión.
+
+El servidor acumula los sockets de los clientes en una lista en lugar de cerrarlos al terminar de recibir las apuestas. Una vez que las `N` agencias notificaron el fin del envío, realiza el sorteo (`action: sorteo`) usando `load_bets` y `has_won`, y recorre la lista de sockets guardados para responder a cada agencia con los DNIs ganadores que le corresponden.
+
+Este diseño evita el deadlock que ocurriría si el servidor cerrara la conexión prematuramente esperando una reconexión del cliente para entregar los resultados.
+
 
