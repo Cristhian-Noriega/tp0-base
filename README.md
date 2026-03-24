@@ -270,3 +270,13 @@ El servidor acumula los sockets de los clientes en una lista en lugar de cerrarl
 Este diseño evita el deadlock que ocurriría si el servidor cerrara la conexión prematuramente esperando una reconexión del cliente para entregar los resultados.
 
 
+### Ejercicio 8
+
+Para permitir el procesamiento paralelo de conexiones, se modificó el servidor para lanzar un **thread por cliente** al momento de aceptar cada conexión. Esto permite que múltiples agencias envíen sus apuestas simultáneamente sin bloquearse entre sí.
+
+Para proteger la escritura concurrente en disco, se utilizó un `threading.Lock()` que envuelve las llamadas a `store_bets()`, evitando race conditions entre threads.
+
+La sincronización del sorteo se resolvió con una barrera (`threading.Barrier`) inicializada con la cantidad de agencias. Cada thread, al terminar de recibir las apuestas de su cliente, espera en la barrera hasta que todos lleguen. El último thread en llegar (identificado por el valor de retorno `0` de `barrier.wait()`) ejecuta el log del sorteo. Una vez liberada la barrera, cada thread calcula y envía los ganadores correspondientes a su agencia por el mismo socket, siguiendo el protocolo de conexión única del ejercicio anterior.
+
+Si bien Python tiene el GIL que impide paralelismo real en CPU, las operaciones de I/O (lectura de sockets y escritura en disco) liberan el GIL, por lo que el uso de multithreading resulta efectivo.
+
