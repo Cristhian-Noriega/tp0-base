@@ -15,6 +15,17 @@ const (
 	ackSuccess = 0x01
 )
 
+func serializeBet(bet Bet) string {
+	return strings.Join([]string{
+		strconv.Itoa(bet.Agency),
+		bet.FirstName,
+		bet.LastName,
+		bet.Document,
+		bet.Birthdate,
+		strconv.Itoa(bet.Number),
+	}, "\n") + "\n"
+}
+
 func sendAll(conn net.Conn, data []byte) error {
 	sent := 0
 	for sent < len(data) {
@@ -28,14 +39,7 @@ func sendAll(conn net.Conn, data []byte) error {
 }
 
 func SendBet(bet Bet, conn net.Conn) error {
-	payload := strings.Join([]string{
-		strconv.Itoa(bet.Agency),
-		bet.FirstName,
-		bet.LastName,
-		bet.Document,
-		bet.Birthdate,
-		strconv.Itoa(bet.Number),
-	}, "\n") + "\n"
+	payload := serializeBet(bet)
 
 	length := len(payload)
 	header := make([]byte, headerSize)
@@ -52,6 +56,10 @@ func RecvAck(conn net.Conn) (bool, error) {
 		return false, err
 	}
 	return buffer[0] == ackSuccess, nil
+}
+
+func BetPacketSize(bet Bet) int {
+	return headerSize + len(serializeBet(bet))
 }
 
 func SendBatch(bets []Bet, conn net.Conn) error {

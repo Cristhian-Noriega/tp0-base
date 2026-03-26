@@ -14,6 +14,8 @@ import (
 
 var log = logging.MustGetLogger("log")
 
+const maxBatchSizeBytes = 8 * 1024
+
 // ClientConfig Configuration used by the client
 type ClientConfig struct {
 	ID             string
@@ -65,6 +67,7 @@ func (c *Client) readCSV(csvPath string, quit chan os.Signal) error {
 	reader := csv.NewReader(f)
 	agency, _ := strconv.Atoi(c.config.ID)
 	var chunk []Bet
+	chunkSizeBytes := headerSize
 
 	for {
 		select {
@@ -92,13 +95,37 @@ func (c *Client) readCSV(csvPath string, quit chan os.Signal) error {
 			continue
 		}
 
+		betSizeBytes := BetPacketSize(bet)
+		if betSizeBytes + headerSize > maxBatchSizeBytes {
+			log.Warningf(
+				"action: read_csv | result: fail | client_id: %v | error: bet_exceeds_max_batch_size | dni: %v | numero: %v | size_bytes: %v",
+				c.config.ID,
+				bet.Document,
+				bet.Number,
+				betSizeBytes + headerSize,
+			)
+			continue
+		}
+
+		nextChunkSizeBytes := chunkSizeBytes + betSizeBytes
+		if len(chunk) > 0 && (len(chunk) >= c.config.BatchMaxAmount || nextChunkSizeBytes > maxBatchSizeBytes) {
+			if err := c.sendChunk(chunk); err != nil {
+				return err
+			}
+			chunk = nil
+			chunkSizeBytes = headerSize
+			nextChunkSizeBytes = chunkSizeBytes + betSizeBytes
+		}
+
 		chunk = append(chunk, bet)
+		chunkSizeBytes = nextChunkSizeBytes
 
 		if len(chunk) >= c.config.BatchMaxAmount {
 			if err := c.sendChunk(chunk); err != nil {
 				return err
 			}
 			chunk = nil
+			chunkSizeBytes = headerSize
 		}
 	}
 
