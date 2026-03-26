@@ -250,3 +250,7 @@ El header es de 2 bytes, para la longitud del payload, y esto es codificado en b
 
 Por el lado del servidor, este responde con 1 byte: `0x01` si la apuesta fue recibida correctamente, `0x00` si hubo un error. Esto funciona como un `ACK` para el cliente. 
 
+Al definir el protocolo de la capa de aplicacion, se opto por un approach que considera framing binario mas payload en texto. Si bien, se sabe que si fuese todo binario, se podria optimizar el ancho de banda y se reduciria el payload, se considero un trade off aceptable para simplificar el protocolo, y que del lado del cliente se tiene la posibilidad de ver el payload en texto plano y del lado del servido simplemente splittear por \n. Ademas en un caso de extension de fields no se rompe la compatibilidad con el protocolo actual.
+
+Respecto al manejo de short reads y short writes, se realizo una encapsulacion de las ops de lectura y escritura en funciones auxiliares `recv_exactly` y `send_all` que se encargan de leer o escribir la cantidad exacta de bytes solicitada.
+
